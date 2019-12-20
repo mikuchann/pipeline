@@ -8,7 +8,7 @@ metadata:
     alauda.io/displayName.en: "FusionStage Java Build & Update Application With CustomRegistry"
     alauda.io/description.zh-CN: "克隆代码 -> Java 构建 -> Docker 构建 -> 更新应用"
     alauda.io/description.en: "Clone -> Java Build -> Docker Build -> Update Application"
-    alauda.io/version: "0.0.3"
+    alauda.io/version: "0.0.4"
     alauda.io/style.icon: java,maven,docker,sonarqube,kubernetes
   labels:
     category: Build
@@ -242,7 +242,7 @@ spec:
             type: string
             name:
               zh-CN: "镜像仓库"
-              en: "Dockerfile"
+              en: "imageRepository"
             description:
               zh-CN: "格式：host:port/image"
               en: "host:port/image"
@@ -253,7 +253,7 @@ spec:
             type: string
           binding:
             - build-docker-fusionstage.args.imageTag
-            - fusionStageDeployServiceWithCustomImage.args.imageRepository
+            - fusionStageDeployServiceWithCustomImage.args.imageTag
           display:
             type: string
             name:

@@ -9,7 +9,7 @@ metadata:
     alauda.io/description.en: "Docker Build with fusionstage"
     alauda.io/readme.zh-CN: "Docker 构建并上传镜像到 fusionstage"
     alauda.io/readme.en: "Docker Build with fusionstage"
-    alauda.io/version: "0.0.2"
+    alauda.io/version: "0.0.3"
     alauda.io/style.icon: ""
   labels:
     category: CI
@@ -62,7 +62,7 @@ spec:
         type: string
         name:
           zh-CN: "镜像仓库"
-          en: "Dockerfile"
+          en: "imageRepository"
         description:
           zh-CN: "格式：host:port/imagename"
           en: "host:port/image"
