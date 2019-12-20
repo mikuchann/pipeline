@@ -9,7 +9,7 @@ metadata:
     alauda.io/description.en: "Docker Build with fusionstage"
     alauda.io/readme.zh-CN: "Docker 构建并上传镜像到 fusionstage"
     alauda.io/readme.en: "Docker Build with fusionstage"
-    alauda.io/version: "0.0.3"
+    alauda.io/version: "0.0.20"
     alauda.io/style.icon: ""
   labels:
     category: CI
@@ -18,23 +18,21 @@ spec:
   body: |+
     script {
         def retryCount = {{ if .retry }}{{ .retry }}{{else}}0{{end}}
-        def repositoryAddr = '{{.imageRepository}}:{{.imageTag}}'.replace("http://","").replace("https://","")
-        def pushImageAPI = '{{.remoteImageAPI}}'
-        def authJSON = '{"auth": {"identidy": {"methods": "password", "password": {"user": {"name": "{{.imageAuthName}}", "password": "{{.imageAuthPassword}}", "domain": {"name": "{{.imageAuthName}}"}}}}, "scope": {"domain": {"name": "{{.imageAuthName}}"}}}}'
-        env.IMAGE_REPO = repositoryAddr
-        env.IMAGE_API = pushImageAPI
-        env.AUTH_JSON = authJSON
-
+        
         dir(RELATIVE_DIRECTORY) {
 
         try{
               container('tools'){
                   retry(retryCount) {
+                        def imageRepo = "{{.imageRepository}}:{{.imageTag}}"
+                        def token = sh (
+                          script: 'curl -i -k -H "Accept:application/json" -H "Content-Type:application/json;charset=utf8" -X POST -d \'{"auth": {"identidy": {"methods": "password", "password": {"user": {"name": "{{.imageAuthName}}", "password": "{{.imageAuthPassword}}", "domain": {"name": "{{.imageAuthName}}"}}}}, "scope": {"domain": {"name": "{{.imageAuthName}}"}}}}\' {{.imageAuthAPI}} | grep Token | awk "{print $2}"',
+                          returnStdout: true
+                        )
                         sh """
-                            docker build -t ${IMAGE_REPO} -f {{.dockerfile}} {{.buildArguments}} {{ if .context }}{{.context}}{{else}}.{{end}}
-                            docker save ${IMAGE_REPO} | gzip > image.tar.gz
-                            token=$(curl -i -k -H 'Accept:application/json' -H 'Content-Type:application/json;charset=utf8' -X POST -d ${AUTH_JSON} {{.imageAuthAPI}} | grep Token | awk '{print $2}')
-                            curl -k -XPUT -H "X-Auth-Token: $token" -H "Content-Type: multipart/form-data" -F "file=@image.tar.gz" "${IMAGE_API}"
+                          docker build -t ${imageRepo} -f {{.dockerfile}} {{.buildArguments}} {{ if .context }}{{.context}}{{else}}.{{end}}
+                          docker save ${imageRepo} | gzip > image.tar.gz
+                          curl -k -XPUT -H 'X-Auth-Token: ${token}' -H 'Content-Type: multipart/form-data' -F 'file=@image.tar.gz' {{.remoteImageAPI}}
                         """
                   }
               }
