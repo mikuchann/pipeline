@@ -8,7 +8,7 @@ metadata:
     alauda.io/displayName.en: "FusionStage Java Build & Update Application With CustomRegistry"
     alauda.io/description.zh-CN: "克隆代码 -> Java 构建 -> Docker 构建 -> 更新应用"
     alauda.io/description.en: "Clone -> Java Build -> Docker Build -> Update Application"
-    alauda.io/version: "0.0.1"
+    alauda.io/version: "0.0.2"
     alauda.io/style.icon: java,maven,docker,sonarqube,kubernetes
   labels:
     category: Build
@@ -273,7 +273,7 @@ spec:
             type: string
             name:
               zh-CN: "镜像上传接口"
-              en: ""
+              en: "remoteImageAPI"
             description:
               zh-CN: "镜像上传接口，如: https://0.0.0.0:1234/api"
               en: ""
@@ -288,7 +288,7 @@ spec:
             type: string
             name:
               zh-CN: "镜像鉴权接口"
-              en: ""
+              en: "imageAuthAPI"
             description:
               zh-CN: "镜像鉴权接口，如: https://0.0.0.0:1234/api"
               en: ""
@@ -303,7 +303,7 @@ spec:
             type: string
             name:
               zh-CN: "镜像鉴权用户名"
-              en: ""
+              en: "imageAuthName"
             description:
               zh-CN: "镜像鉴权用户名"
               en: ""
@@ -318,7 +318,7 @@ spec:
             type: string
             name:
               zh-CN: "镜像鉴权密码"
-              en: ""
+              en: "imageAuthPassword"
             description:
               zh-CN: "镜像鉴权密码"
               en: ""
