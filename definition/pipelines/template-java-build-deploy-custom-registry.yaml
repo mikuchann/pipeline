@@ -1,0 +1,612 @@
+apiVersion: devops.alauda.io/v1alpha1
+kind: PipelineTemplate
+metadata:
+  name: FusionStageJavaBuildAndDeployServiceWithCustomRegistry
+  namespace: default
+  annotations:
+    alauda.io/displayName.zh-CN: "FusionStage Java 构建自定义镜像仓库并更新应用"
+    alauda.io/displayName.en: "FusionStage Java Build & Update Application With CustomRegistry"
+    alauda.io/description.zh-CN: "克隆代码 -> Java 构建 -> Docker 构建 -> 更新应用"
+    alauda.io/description.en: "Clone -> Java Build -> Docker Build -> Update Application"
+    alauda.io/version: "0.0.1"
+    alauda.io/style.icon: java,maven,docker,sonarqube,kubernetes
+  labels:
+    category: Build
+spec:
+  engine: graph
+  withSCM: true
+  agent:
+    label: java
+  stages:
+    - name: Clone
+      tasks:
+        - name: clone
+          kind: ClusterPipelineTaskTemplate
+          type: public/clone
+    - name: "Java Build"
+      tasks:
+        - name: mavenwithjira
+          kind: PipelineTaskTemplate
+    - name: "Code Scan"
+      tasks:
+        - name: sonar
+          kind: ClusterPipelineTaskTemplate
+          type: public/sonar
+          relation:
+            - action: show
+              when:
+                name: UseSonarQube
+                value: true
+    - name: "Docker Build"
+      tasks:
+        - name: build-docker-fusionstage
+          kind: PipelineTaskTemplate
+    - name: "DeployService"
+      tasks:
+        - name: fusionStageDeployServiceWithCustomImage
+          kind: PipelineTaskTemplate
+  arguments:
+    - displayName:
+        zh-CN: "代码检出"
+        en: "Clone"
+      items:
+        - name: "PlatformCodeRepository"
+          schema:
+            type: alauda.io/coderepositorymix
+          required: true
+          value: ""
+          binding:
+            - clone.args.PlatformCodeRepository
+            - sonar.args.PlatformCodeRepository
+          display:
+            type: alauda.io/coderepositorymix
+            name:
+              zh-CN: "代码仓库"
+              en: RepositoryPath
+            description:
+              zh-CN: "选择已为项目分配的代码仓库"
+              en: ""
+        - name: "Branch"
+          schema:
+            type: string
+          required: true
+          value: ""
+          binding:
+            - clone.args.Branch
+            - sonar.args.Branch
+          display:
+            type: alauda.io/codebranch
+            advanced: false
+            name:
+              zh-CN: "分支"
+              en: "Branch"
+            description:
+              zh-CN: "检出代码仓库中的分支"
+              en: "The code repository branch that you want to check out."
+            related: PlatformCodeRepository
+        - name: "RelativeDirectory"
+          schema:
+            type: string
+          required: false
+          value: ""
+          binding:
+            - clone.args.RelativeDirectory
+          default: "."
+          display:
+            type: string
+            advanced: true
+            name:
+              zh-CN: "相对目录"
+              en: RelativeDirectory
+            description:
+              zh-CN: "指定检出 Git 仓库的本地目录(相对于 workspace 根目录)。若为空，将使用 workspace 根目录"
+              en: "Specify a local directory (relative to the workspace root) where the Git repository will be checked out. If left empty, the workspace root itself will be used"
+    - displayName:
+        zh-CN: "Maven 构建"
+        en: "Maven Build"
+      items:
+        - name: "buildCommand"
+          schema:
+            type: string
+          binding:
+            - mavenwithjira.args.buildCommand
+          display:
+            type: code
+            advanced: false
+            name:
+              zh-CN: "构建命令"
+              en: "Build Command"
+            description:
+              zh-CN: "自定义更详细的构建命令。默认为：mvn clean package"
+              en: ""
+          required: false
+          default: 'mvn clean package'
+          value: ""
+    - displayName:
+        zh-CN: "代码扫描"
+        en: "Code Scanning"
+      items:
+        - name: "UseSonarQube"
+          schema:
+            type: boolean
+          display:
+            type: boolean
+            name:
+              zh-CN: "开启代码扫描"
+              en: "Use code analysis"
+            description:
+              zh-CN: "开启后，进行代码扫描"
+              en: "Whether to use Sonarqube for code scan"
+          required: false
+          value: "false"
+        - name: "CodeQualityBinding"
+          schema:
+            type: alauda.io/toolbinding
+          binding:
+            - sonar.args.CodeQualityBinding
+          required: true
+          value: ""
+          display:
+            type: alauda.io/toolbinding
+            args:
+              bindingKind: codequalitytool
+              bindingToolType: Sonarqube
+            name:
+              zh-CN: "SonarQube 实例"
+              en: "SonarQube instance"
+            description:
+              zh-CN: "选择要使用的 SonarQube 实例"
+              en: "Select a SonarQube binding"
+          relation:
+            - action: show
+              when:
+                name: UseSonarQube
+                value: true
+        - name: "EnableBranchAnalysis"
+          schema:
+            type: boolean
+          required: false
+          binding:
+            - sonar.args.EnableBranchAnalysis
+          value: "false"
+          display:
+            type: boolean
+            advanced: true
+            name:
+              zh-CN: "区分代码分支"
+              en: "Enable branch analysis"
+            description:
+              zh-CN: "扫描主分支以外的分支时，若想查看这些分支的扫描结果，需要在Sonarqube 支持多代码分支的同时，开启此开关"
+              en: "When scanning branches other than the main branch while keeping separate results, the Sonarqube instance needs to support branch analysis and turn on this feature"
+          relation:
+            - action: show
+              when:
+                name: UseSonarQube
+                value: true
+        - name: "AnalysisParameters"
+          schema:
+            type: string
+          required: false
+          binding:
+            - sonar.args.AnalysisParameters
+          value: |
+            sonar.sources=./src
+            sonar.java.binaries=./target/classes
+            sonar.sourceEncoding=UTF-8
+          display:
+            type: stringMultiline
+            advanced: false
+            name:
+              zh-CN: "代码扫描参数"
+              en: "Analysis Parameters"
+            description:
+              zh-CN: "为 Sonar Scanner 设置分析参数。当目录中存在 sonar-project.properties 文件时，将会忽略这个参数。详细参数见文档: https://docs.sonarqube.org/latest/analysis/analysis-parameters 和 https://docs.sonarqube.org/display/PLUG/Java+Plugin+and+Bytecode"
+              en: "Set analysis parameters for Sonar Scanner. When 'sonar-project.properties' existed in project, this argument will be omitted. see https://docs.sonarqube.org/latest/analysis/analysis-parameters and https://docs.sonarqube.org/display/PLUG/Java+Plugin+and+Bytecode for more details"
+          relation:
+            - action: show
+              when:
+                name: UseSonarQube
+                value: true
+        - name: "FailedIfNotPassQualityGate"
+          schema:
+            type: boolean
+          required: false
+          binding:
+            - sonar.args.FailedIfNotPassQualityGate
+          value: "false"
+          display:
+            type: boolean
+            advanced: true
+            name:
+              zh-CN: "质量阈未通过终止流水线"
+              en: "Fail pipeline when quality gate fails"
+            description:
+              zh-CN: "开启后，代码扫描结果为失败时，流水线执行状态变为失败，终止流水线"
+              en: "Fails pipeline execution when quality gate fails"
+          relation:
+            - action: show
+              when:
+                name: UseSonarQube
+                value: true
+    - displayName:
+        zh-CN: "Docker 构建"
+        en: "Docker Build"
+      items:
+        - name: "imageRepository"
+          schema:
+            type: string
+          binding:
+            - build-docker-fusionstage.args.imageRepository
+            - fusionStageDeployServiceWithCustomImage.args.imageRepository
+          display:
+            type: string
+            name:
+              zh-CN: "镜像仓库"
+              en: "Dockerfile"
+            description:
+              zh-CN: "格式：host:port/image"
+              en: "host:port/image"
+          required: true
+          default: ''
+        - name: "imageTag"
+          schema:
+            type: string
+          binding:
+            - build-docker-fusionstage.args.imageTag
+            - fusionStageDeployServiceWithCustomImage.args.imageRepository
+          display:
+            type: string
+            name:
+              zh-CN: "镜像 tag"
+              en: "imageTag"
+            description:
+              zh-CN: "镜像 tag"
+              en: "image tag"
+          required: true
+          default: 'latest'
+        - name: "remoteImageAPI"
+          schema:
+            type: string
+          binding:
+            - build-docker-fusionstage.args.remoteImageAPI
+          display:
+            type: string
+            name:
+              zh-CN: "镜像上传接口"
+              en: ""
+            description:
+              zh-CN: "镜像上传接口，如: https://0.0.0.0:1234/api"
+              en: ""
+          required: true
+          default: ''
+        - name: "imageAuthAPI"
+          schema:
+            type: string
+          binding:
+            - build-docker-fusionstage.args.imageAuthAPI
+          display:
+            type: string
+            name:
+              zh-CN: "镜像鉴权接口"
+              en: ""
+            description:
+              zh-CN: "镜像鉴权接口，如: https://0.0.0.0:1234/api"
+              en: ""
+          required: true
+          default: ''
+        - name: "imageAuthName"
+          schema:
+            type: string
+          binding:
+            - build-docker-fusionstage.args.imageAuthName
+          display:
+            type: string
+            name:
+              zh-CN: "镜像鉴权用户名"
+              en: ""
+            description:
+              zh-CN: "镜像鉴权用户名"
+              en: ""
+          required: true
+          default: ''
+        - name: "imageAuthPassword"
+          schema:
+            type: string
+          binding:
+            - build-docker-fusionstage.args.imageAuthPassword
+          display:
+            type: string
+            name:
+              zh-CN: "镜像鉴权密码"
+              en: ""
+            description:
+              zh-CN: "镜像鉴权密码"
+              en: ""
+          required: true
+          default: ''
+        - name: "dockerfile"
+          schema:
+            type: string
+          binding:
+            - build-docker-fusionstage.args.dockerfile
+          display:
+            type: string
+            advanced: true
+            name:
+              zh-CN: "Dockerfile"
+              en: "Dockerfile"
+            description:
+              zh-CN: "Dockerfile 在代码仓库中的绝对路径"
+              en: ""
+          required: true
+          default: 'Dockerfile'
+          value: ""
+        - name: "context"
+          schema:
+            type: string
+          binding:
+            - build-docker-fusionstage.args.context
+          display:
+            type: string
+            advanced: true
+            name:
+              zh-CN: "构建上下文"
+              en: "Build Context"
+            description:
+              zh-CN: "构建过程可以引用上下文中的任何文件。例如，构建中可以使用 COPY 命令在上下文中引用文件"
+              en: "The build process can refer to any of the files in the context. For example, your build can use a COPY instruction to reference a file in the context"
+          required: true
+          default: '.'
+          value: ""
+        - name: "buildArguments"
+          schema:
+            type: string
+          binding:
+            - build-docker-fusionstage.buildArguments
+          display:
+            type: string
+            advanced: true
+            name:
+              zh-CN: "构建参数"
+              en: "Build Arguments"
+            description:
+              zh-CN: "自定义更多的构建参数，对镜像构建进行更详细的配置"
+              en: ""
+          required: false
+          default: ''
+          value: ""
+        - name: "retry"
+          schema:
+            type: string
+          binding:
+            - build-docker-fusionstage.args.retry
+          display:
+            type: string
+            advanced: true
+            name:
+              zh-CN: "重试次数"
+              en: "Retry Times"
+            description:
+              zh-CN: "生成镜像时的失败重试次数"
+              en: ""
+          required: false
+          default: '3'
+          value: ""
+    - displayName:
+        zh-CN: "更新应用"
+        en: "Update Application"
+      items:
+        - name: "domainName"
+          schema:
+            type: string
+          binding:
+            - fusionStageDeployServiceWithCustomImage.args.domainName
+          display:
+            type: string
+            name:
+              zh-CN: "租户名称"
+              en: "Domain Name"
+            description:
+              zh-CN: "fusionStage平台用户所属租户"
+              en: "fusionStage"
+          required: true
+        - name: "username"
+          schema:
+            type: string
+          binding:
+            - fusionStageDeployServiceWithCustomImage.args.username
+          display:
+            type: string
+            name:
+              zh-CN: "用户名"
+              en: "UserName"
+            description:
+              zh-CN: "fusionStage平台登录帐号"
+              en: "fusionStage"
+          required: true
+        - name: "password"
+          schema:
+            type: string
+          binding:
+            - fusionStageDeployServiceWithCustomImage.args.password
+          display:
+            type: string
+            name:
+              zh-CN: "密码"
+              en: "Password"
+            description:
+              zh-CN: "fusionStage平台登录密码"
+              en: "fusionStage"
+          required: true
+        - name: "projectId"
+          schema:
+            type: string
+          binding:
+            - fusionStageDeployServiceWithCustomImage.args.projectId
+          display:
+            type: string
+            name:
+              zh-CN: "项目 ID"
+              en: "Project ID"
+          required: true
+        - name: "applicationName"
+          schema:
+            type: string
+          binding:
+            - fusionStageDeployServiceWithCustomImage.args.applicationName
+          display:
+            type: string
+            name:
+              zh-CN: "应用名称"
+              en: "Application Name"
+          required: true
+        - name: "containerName"
+          schema:
+            type: string
+          binding:
+            - fusionStageDeployServiceWithCustomImage.args.containerName
+          display:
+            type: string
+            name:
+              zh-CN: "容器名称"
+              en: "Container Name"
+          required: true
+        - name: "command"
+          schema:
+            type: string
+          required: false
+          binding:
+          - fusionStageDeployServiceWithCustomImage.args.command
+          value: ""
+          display:
+            type: string
+            advanced: true
+            name:
+              zh-CN: "启动命令"
+              en: "command"
+            description:
+              zh-CN: "即 command，相当于 Dockerfile 中的 ENTRYPOINT 命令。如果没有指定启动命令，将使用容器镜像中的 ENTRYPOINT"
+              en: "command"
+        - name: "args"
+          schema:
+            type: string
+          required: false
+          binding:
+          - fusionStageDeployServiceWithCustomImage.args.args
+          display:
+            type: string
+            advanced: true
+            name:
+              zh-CN: "参数"
+              en: "args"
+            description:
+              zh-CN: "即 args，相当于 Dockerfile 中的 CMD，负责提供启动命令的命令参数。如果没有指定参数，将使用容器镜像中的 CMD"
+              en: "args"
+        - name: timeout
+          schema:
+            type: string
+          binding:
+            - fusionStageDeployServiceWithCustomImage.args.timeout
+          display:
+            type: string
+            advanced: true
+            name:
+              zh-CN: "超时时间（秒）"
+              en: "Timeout (s)"
+            description:
+              zh-CN: "当前任务的执行时间若超过超时时间，则会中止任务，流水线变为失败状态"
+              en: ""
+          required: true
+          default: '300'
+          value: "300"
+
+    - displayName:
+        zh-CN: "JIRA 信息"
+        en: "JIRA Information"
+      items:
+        - name: "UseJira"
+          schema:
+            type: boolean
+          binding:
+            - mavenwithjira.args.EnableJira
+            - build-docker-fusionstage.args.EnableJira
+            - fusionStageDeployServiceWithCustomImage.args.EnableJira
+          display:
+            type: boolean
+            name:
+              zh-CN: "创建JIRA Issue"
+              en: "Create JIRA Issue"
+            description:
+              zh-CN: "开启后，进行jira issue 创建"
+              en: "Whether to create jira issue"
+          required: false
+          value: "false"
+        - name: "Project Key"
+          schema:
+            type: string
+          binding:
+            - mavenwithjira.args.projectKey
+            - build-docker-fusionstage.args.projectKey
+            - fusionStageDeployServiceWithCustomImage.args.projectKey
+          display:
+            type: string
+            advanced: false
+            name:
+              zh-CN: "项目关键字"
+              en: "Project Key"
+            description:
+              zh-CN: "项目关键字"
+              en: "Project Key"
+          required: true
+          default: ''
+          relation:
+            - action: show
+              when:
+                name: UseJira
+                value: true
+        - name: "Summary"
+          schema:
+            type: string
+          binding:
+            - mavenwithjira.args.summary
+            - build-docker-fusionstage.args.summary
+            - fusionStageDeployServiceWithCustomImage.args.summary
+          display:
+            type: string
+            advanced: false
+            name:
+              zh-CN: "标题"
+              en: "Summary"
+            description:
+              zh-CN: "标题"
+              en: "Summary"
+          required: true
+          default: ''
+          relation:
+            - action: show
+              when:
+                name: UseJira
+                value: true
+        - name: "Description"
+          schema:
+            type: string
+          binding:
+            - mavenwithjira.args.description
+            - build-docker-fusionstage.args.description
+            - fusionStageDeployServiceWithCustomImage.args.description
+          display:
+            type: string
+            advanced: false
+            name:
+              zh-CN: "描述"
+              en: "Description"
+            description:
+              zh-CN: "描述"
+              en: "description"
+          required: true
+          default: ''
+          relation:
+            - action: show
+              when:
+                name: UseJira
+                value: true
