@@ -9,7 +9,7 @@ metadata:
     alauda.io/description.en: "Docker Build with fusionstage"
     alauda.io/readme.zh-CN: "Docker 构建并上传镜像到 fusionstage"
     alauda.io/readme.en: "Docker Build with fusionstage"
-    alauda.io/version: "0.0.1"
+    alauda.io/version: "0.0.2"
     alauda.io/style.icon: ""
   labels:
     category: CI
