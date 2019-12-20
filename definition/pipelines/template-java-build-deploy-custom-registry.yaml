@@ -8,7 +8,7 @@ metadata:
     alauda.io/displayName.en: "FusionStage Java Build & Update Application With CustomRegistry"
     alauda.io/description.zh-CN: "克隆代码 -> Java 构建 -> Docker 构建 -> 更新应用"
     alauda.io/description.en: "Clone -> Java Build -> Docker Build -> Update Application"
-    alauda.io/version: "0.0.2"
+    alauda.io/version: "0.0.3"
     alauda.io/style.icon: java,maven,docker,sonarqube,kubernetes
   labels:
     category: Build
