@@ -9,7 +9,7 @@ metadata:
     alauda.io/description.en: RobotFramework Test
     alauda.io/readme.zh-CN: RobotFramework 测试
     alauda.io/readme.en: RobotFramework Test
-    alauda.io/version: "0.0.1"
+    alauda.io/version: "0.0.2"
     alauda.io/style.icon: ""
   labels:
     category: Test
@@ -19,8 +19,13 @@ spec:
     script {
       container('robotframework'){
         sh 'robot {{.testDir}}'
+        def testpath = currentBuild.fullProjectName + '/' + currentBuild.number
+        sh 'curl  -Ffile=@./report.html' + ' "http://${REPORT_SERVER}:${REPORT_SERVER_PORT}/upload?token=${REPORT_SERVER_TOKEN}&path=' + testpath + '"'
+        sh 'curl  -Ffile=@./log.html' + ' "http://${REPORT_SERVER}:${REPORT_SERVER_PORT}/upload?token=${REPORT_SERVER_TOKEN}&path=' + testpath + '"'
+        sh 'curl  -Ffile=@./output.xml' + ' "http://${REPORT_SERVER}:${REPORT_SERVER_PORT}/upload?token=${REPORT_SERVER_TOKEN}&path=' + testpath + '"'
+        echo 'test report link is below:\n' + "http://${REPORT_SERVER}:${REPORT_SERVER_WEB_PORT}/" + testpath + '/report.html'
         publishHTML([allowMissing: false, alwaysLinkToLastBuild: false, keepAll: false,
-          reportDir: '/', reportFiles: 'report.html', reportName: 'RobotFramework Report', reportTitles: 'RobotFramework Report'])
+          reportDir: './', reportFiles: 'report.html', reportName: 'RobotFramework Report', reportTitles: 'RobotFramework Report'])
       }
     }
   arguments:

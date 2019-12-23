@@ -8,7 +8,7 @@ metadata:
     alauda.io/displayName.en: "RobotFramework Test"
     alauda.io/description.zh-CN: "克隆代码 -> RobotFramework 测试"
     alauda.io/description.en: "Clone -> RobotFramework Test"
-    alauda.io/version: "0.0.1"
+    alauda.io/version: "0.0.2"
     alauda.io/style.icon: robotframework
   labels:
     category: Test
