@@ -26,13 +26,20 @@ spec:
                   retry(retryCount) {
                         def imageRepo = "{{.imageRepository}}:{{.imageTag}}"
                         def token = sh (
-                          script: 'curl -i -k -H "Accept:application/json" -H "Content-Type:application/json;charset=utf8" -X POST -d \'{"auth": {"identidy": {"methods": "password", "password": {"user": {"name": "{{.imageAuthName}}", "password": "{{.imageAuthPassword}}", "domain": {"name": "{{.imageAuthName}}"}}}}, "scope": {"domain": {"name": "{{.imageAuthName}}"}}}}\' {{.imageAuthAPI}} | grep Token | awk "{print $2}"',
+                          script: '',
                           returnStdout: true
                         )
                         sh """
                           docker build -t ${imageRepo} -f {{.dockerfile}} {{.buildArguments}} {{ if .context }}{{.context}}{{else}}.{{end}}
                           docker save ${imageRepo} | gzip > image.tar.gz
-                          curl -k -XPUT -H 'X-Auth-Token: ${token}' -H 'Content-Type: multipart/form-data' -F 'file=@image.tar.gz' {{.remoteImageAPI}}
+
+                          export token=$(curl -sik -H "Accept:application/json" -H "Content-Type:application/json;charset=utf8" -X POST -d \'{"auth": {"identidy": {"methods": "password", "password": {"user": {"name": "{{.imageAuthName}}", "password": "{{.imageAuthPassword}}", "domain": {"name": "{{.imageAuthName}}"}}}}, "scope": {"domain": {"name": "{{.imageAuthName}}"}}}}\' {{.imageAuthAPI}} | grep Token")
+                          echo ${token} | wc -m
+                          export newtoken=$(expr substr ${token} 1 1312)
+                          export newtoken1=$(echo ${token} | awk '{print substr(,1,1312)}')
+                          export newtoken2=$(echo ${token} | cut c1-1312)
+                          export newtoken3=$(echo ${token} | dd bs=1 count=1312 2>/dev/null)
+                          curl -vk -XPUT -H 'X-Auth-Token: ${newtoken3}' -H 'Content-Type: multipart/form-data' -F 'file=@image.tar.gz' {{.remoteImageAPI}}
                         """
                   }
               }
