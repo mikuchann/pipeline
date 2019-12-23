@@ -1,0 +1,103 @@
+apiVersion: devops.alauda.io/v1alpha1
+kind: PipelineTemplate
+metadata:
+  name: RobotFrameworkTest
+  namespace: default
+  annotations:
+    alauda.io/displayName.zh-CN: "RobotFramework 测试"
+    alauda.io/displayName.en: "RobotFramework Test"
+    alauda.io/description.zh-CN: "克隆代码 -> RobotFramework 测试"
+    alauda.io/description.en: "Clone -> RobotFramework Test"
+    alauda.io/version: "0.0.1"
+    alauda.io/style.icon: robotframework
+  labels:
+    category: Test
+spec:
+  engine: graph
+  withSCM: true
+  agent:
+    label: robotframework
+  stages:
+    - name: Clone
+      tasks:
+        - name: clone
+          kind: ClusterPipelineTaskTemplate
+          type: public/clone
+    - name: "RobotFramework test"
+      tasks:
+        - name: RobotFrameworkTest
+          kind: PipelineTaskTemplate
+  arguments:
+    - displayName:
+        zh-CN: "代码检出"
+        en: "Clone"
+      items:
+        - name: "PlatformCodeRepository"
+          schema:
+            type: alauda.io/coderepositorymix
+          required: true
+          value: ""
+          binding:
+            - clone.args.PlatformCodeRepository
+          display:
+            type: alauda.io/coderepositorymix
+            name:
+              zh-CN: "代码仓库"
+              en: RepositoryPath
+            description:
+              zh-CN: "选择已为项目分配的代码仓库"
+              en: ""
+        - name: "Branch"
+          schema:
+            type: string
+          required: true
+          value: ""
+          binding:
+            - clone.args.Branch
+          display:
+            type: alauda.io/codebranch
+            advanced: false
+            name:
+              zh-CN: "分支"
+              en: "Branch"
+            description:
+              zh-CN: "检出代码仓库中的分支"
+              en: "The code repository branch that you want to check out."
+            related: PlatformCodeRepository
+        - name: "RelativeDirectory"
+          schema:
+            type: string
+          required: false
+          value: ""
+          binding:
+            - clone.args.RelativeDirectory
+          default: "."
+          display:
+            type: string
+            advanced: true
+            name:
+              zh-CN: "相对目录"
+              en: Relative Directory
+            description:
+              zh-CN: "指定检出 Git 仓库的本地目录(相对于 workspace 根目录)。若为空，将使用 workspace 根目录"
+              en: "Specify a local directory (relative to the workspace root) where the Git repository will be checked out. If left empty, the workspace root itself will be used"
+    - displayName:
+        zh-CN: "RobotFramework 测试"
+        en: "RobotFramework Test"
+      items:
+        - name: "RobotFrameworkTest"
+          schema:
+            type: string
+          binding:
+            - RobotFrameworkTest.args.testDir
+          display:
+            type: string
+            name:
+              zh-CN: "测试目录"
+              en: "Test dir"
+            description:
+              zh-CN: "测试目录"
+              en: "Test dir"
+          required: true
+          value: ""
+          default: ''

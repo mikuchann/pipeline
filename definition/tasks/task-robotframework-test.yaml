@@ -1,0 +1,39 @@
+apiVersion: devops.alauda.io/v1alpha1
+kind: PipelineTaskTemplate
+metadata:
+  name: RobotFrameworkTest
+  annotations:
+    alauda.io/displayName.zh-CN: RobotFramework 测试
+    alauda.io/displayName.en: RobotFramework Test
+    alauda.io/description.zh-CN: RobotFramework 测试
+    alauda.io/description.en: RobotFramework Test
+    alauda.io/readme.zh-CN: RobotFramework 测试
+    alauda.io/readme.en: RobotFramework Test
+    alauda.io/version: "0.0.1"
+    alauda.io/style.icon: ""
+  labels:
+    category: Test
+spec:
+  engine: gotpl
+  body: |+
+    script {
+      container('robotframework'){
+        sh 'robot {{.testDir}}'
+        publishHTML([allowMissing: false, alwaysLinkToLastBuild: false, keepAll: false,
+          reportDir: '/', reportFiles: 'report.html', reportName: 'RobotFramework Report', reportTitles: 'RobotFramework Report'])
+      }
+    }
+  arguments:
+    - name: "testDir"
+      schema:
+        type: string
+      display:
+        type: string
+        name:
+          zh-CN: "测试目录"
+          en: "Test dir"
+        description:
+          zh-CN: "测试目录"
+          en: "Test dir"
+      required: true
+      default: ''
