@@ -39,3 +39,5 @@ docker run -d -p 34567:80 -v /report:/usr/share/nginx/html/ nginx
 ```
 
 测试仓库可以使用 [robot-demo](https://bitbucket.org/mathildetech/robotframework-docker/src/master/robot-demo/)
+
+#### 4.日志报告地址在日志最后部分有打印，具体配置可参考[jmeter](http://confluence.alauda.cn/pages/viewpage.action?pageId=60817459)
