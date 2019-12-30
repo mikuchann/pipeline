@@ -22,7 +22,8 @@ spec:
       String deploy_endpoint = "${DEPLOY_ENDPOINT}"
 
       try{
-        fusionStage.deploy(token_endpoint,deploy_endpoint,'{{.projectId}}','{{.applicationName}}', '{{.containerName}}', '{{.domainName}}','{{.username}}','{{.password}}', '{{.imageRepository}}:{{.imageTag}}')
+        def tag = "{{.imageTag}}"
+        fusionStage.deploy(token_endpoint,deploy_endpoint,'{{.projectId}}','{{.applicationName}}', '{{.containerName}}', '{{.domainName}}','{{.username}}','{{.password}}', '{{.imageRepository}}:'+tag)
       }catch(Exception err){
         {{if .EnableJira -}}
         def testIssue = [fields: [
