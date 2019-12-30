@@ -1,31 +1,33 @@
 apiVersion: devops.alauda.io/v1alpha1
 kind: PipelineTemplate
 metadata:
-  name: FusionStageJavaBuildAndDeployServiceWithCustomRegistry
-  namespace: default
+  name: CppBuildAndDeployService
   annotations:
-    alauda.io/displayName.zh-CN: "FusionStage Java 构建自定义镜像仓库并更新应用"
-    alauda.io/displayName.en: "FusionStage Java Build & Update Application With CustomRegistry"
-    alauda.io/description.zh-CN: "克隆代码 -> Java 构建 -> Docker 构建 -> 更新应用"
-    alauda.io/description.en: "Clone -> Java Build -> Docker Build -> Update Application"
-    alauda.io/version: "0.0.20"
-    alauda.io/style.icon: java,maven,docker,sonarqube,kubernetes
+    alauda.io/displayName.zh-CN: "C/C++ 构建并部署应用"
+    alauda.io/displayName.en: "C/C++ Build & Deploy Application"
+    alauda.io/description.zh-CN: "克隆代码 -> C/C++ 构建 -> 代码扫描 -> Docker 构建 -> 部署应用"
+    alauda.io/description.en: "Clone -> C/C++ Build -> Code Scan -> Docker Build -> Deploy Application"
+    alauda.io/version: "0.0.1"
+    alauda.io/style.icon: c,cpp,docker,sonarqube,kubernetes
   labels:
     category: Build
 spec:
   engine: graph
   withSCM: true
   agent:
-    label: java
+    label: cpp
+    labelMatcher: cpp
+  options:
+    raw: "buildDiscarder(logRotator(numToKeepStr: '200'))"
   stages:
     - name: Clone
       tasks:
         - name: clone
           kind: ClusterPipelineTaskTemplate
           type: public/clone
-    - name: "Java Build"
+    - name: "C/C++ Build"
       tasks:
-        - name: mavenwithjira
+        - name: cpp
           kind: PipelineTaskTemplate
     - name: "Code Scan"
       tasks:
@@ -39,12 +41,14 @@ spec:
                 value: true
     - name: "Docker Build"
       tasks:
-        - name: build-docker-fusionstage
-          kind: PipelineTaskTemplate
+        - name: build-docker
+          kind: ClusterPipelineTaskTemplate
+          type: public/build-docker
     - name: "DeployService"
       tasks:
-        - name: fusionStageDeployServiceWithCustomImage
-          kind: PipelineTaskTemplate
+        - name: deployService
+          kind: ClusterPipelineTaskTemplate
+          type: public/deployService
   arguments:
     - displayName:
         zh-CN: "代码检出"
@@ -57,7 +61,6 @@ spec:
           value: ""
           binding:
             - clone.args.PlatformCodeRepository
-            - sonar.args.PlatformCodeRepository
           display:
             type: alauda.io/coderepositorymix
             name:
@@ -73,7 +76,6 @@ spec:
           value: ""
           binding:
             - clone.args.Branch
-            - sonar.args.Branch
           display:
             type: alauda.io/codebranch
             advanced: false
@@ -102,14 +104,14 @@ spec:
               zh-CN: "指定检出 Git 仓库的本地目录(相对于 workspace 根目录)。若为空，将使用 workspace 根目录"
               en: "Specify a local directory (relative to the workspace root) where the Git repository will be checked out. If left empty, the workspace root itself will be used"
     - displayName:
-        zh-CN: "Maven 构建"
-        en: "Maven Build"
+        zh-CN: "C/C++ 构建"
+        en: "C/C++ Build"
       items:
         - name: "buildCommand"
           schema:
             type: string
           binding:
-            - mavenwithjira.args.buildCommand
+            - cpp.args.buildCommand
           display:
             type: code
             advanced: false
@@ -117,10 +119,10 @@ spec:
               zh-CN: "构建命令"
               en: "Build Command"
             description:
-              zh-CN: "自定义更详细的构建命令。默认为：mvn clean package"
+              zh-CN: "自定义更详细的构建命令。默认为：make"
               en: ""
           required: false
-          default: 'mvn clean package'
+          default: 'make'
           value: ""
     - displayName:
         zh-CN: "代码扫描"
@@ -176,7 +178,7 @@ spec:
               zh-CN: "区分代码分支"
               en: "Enable branch analysis"
             description:
-              zh-CN: "扫描主分支以外的分支时，若想查看这些分支的扫描结果，需要在Sonarqube 支持多代码分支的同时，开启此开关"
+              zh-CN: "扫描主分支以外的分支时，若想查看这些分支的扫描结果，需要在 Sonarqube 支持多代码分支且要至少扫描过一次主分支的前提下，开启此开关才可扫描成功。"
               en: "When scanning branches other than the main branch while keeping separate results, the Sonarqube instance needs to support branch analysis and turn on this feature"
           relation:
             - action: show
@@ -191,7 +193,6 @@ spec:
             - sonar.args.AnalysisParameters
           value: |
             sonar.sources=./src
-            sonar.java.binaries=./target/classes
             sonar.sourceEncoding=UTF-8
           display:
             type: stringMultiline
@@ -200,8 +201,8 @@ spec:
               zh-CN: "代码扫描参数"
               en: "Analysis Parameters"
             description:
-              zh-CN: "为 Sonar Scanner 设置分析参数。当目录中存在 sonar-project.properties 文件时，将会忽略这个参数。详细参数见文档: https://docs.sonarqube.org/latest/analysis/analysis-parameters 和 https://docs.sonarqube.org/display/PLUG/Java+Plugin+and+Bytecode"
-              en: "Set analysis parameters for Sonar Scanner. When 'sonar-project.properties' existed in project, this argument will be omitted. see https://docs.sonarqube.org/latest/analysis/analysis-parameters and https://docs.sonarqube.org/display/PLUG/Java+Plugin+and+Bytecode for more details"
+              zh-CN: "为 Sonar Scanner 设置分析参数。当目录中存在 sonar-project.properties 文件时，将会忽略这个参数。详细参数见文档: https://docs.sonarqube.org/latest/analysis/analysis-parameters 和 https://docs.sonarqube.org/display/PLUG/C+Plugin+and+Bytecode"
+              en: "Set analysis parameters for Sonar Scanner. When 'sonar-project.properties' existed in project, this argument will be omitted. see https://docs.sonarqube.org/latest/analysis/analysis-parameters and https://docs.sonarqube.org/display/PLUG/C+Plugin+and+Bytecode for more details"
           relation:
             - action: show
               when:
@@ -234,101 +235,25 @@ spec:
       items:
         - name: "imageRepository"
           schema:
-            type: string
+            type: alauda.io/dockerimagerepositorymix
           binding:
-            - build-docker-fusionstage.args.imageRepository
-            - fusionStageDeployServiceWithCustomImage.args.imageRepository
+            - build-docker.args.imageRepository
+            - deployService.args.imageRepositoryDeploy
+          required: true
+          value: ""
           display:
-            type: string
+            type: alauda.io/dockerimagerepositorymix
             name:
               zh-CN: "镜像仓库"
-              en: "imageRepository"
+              en: Repository
             description:
-              zh-CN: "格式：host:port/image"
-              en: "host:port/image"
-          required: true
-          default: ''
-        - name: "imageTag"
-          schema:
-            type: string
-          binding:
-            - build-docker-fusionstage.args.imageTag
-            - fusionStageDeployServiceWithCustomImage.args.imageTag
-          display:
-            type: string
-            name:
-              zh-CN: "镜像 tag"
-              en: "imageTag"
-            description:
-              zh-CN: "镜像 tag"
-              en: "image tag"
-          required: true
-          default: 'latest'
-        - name: "remoteImageAPI"
-          schema:
-            type: string
-          binding:
-            - build-docker-fusionstage.args.remoteImageAPI
-          display:
-            type: string
-            name:
-              zh-CN: "镜像上传接口"
-              en: "remoteImageAPI"
-            description:
-              zh-CN: "镜像上传接口，如: https://0.0.0.0:1234/api"
+              zh-CN: "选择已为项目分配的镜像仓库或者输入地址,更新应用时将使用第一个tag进行应用的更新"
               en: ""
-          required: true
-          default: ''
-        - name: "imageAuthAPI"
-          schema:
-            type: string
-          binding:
-            - build-docker-fusionstage.args.imageAuthAPI
-          display:
-            type: string
-            name:
-              zh-CN: "镜像鉴权接口"
-              en: "imageAuthAPI"
-            description:
-              zh-CN: "镜像鉴权接口，如: https://0.0.0.0:1234/api"
-              en: ""
-          required: true
-          default: ''
-        - name: "imageAuthName"
-          schema:
-            type: string
-          binding:
-            - build-docker-fusionstage.args.imageAuthName
-          display:
-            type: string
-            name:
-              zh-CN: "镜像鉴权用户名"
-              en: "imageAuthName"
-            description:
-              zh-CN: "镜像鉴权用户名"
-              en: ""
-          required: true
-          default: ''
-        - name: "imageAuthPassword"
-          schema:
-            type: string
-          binding:
-            - build-docker-fusionstage.args.imageAuthPassword
-          display:
-            type: string
-            name:
-              zh-CN: "镜像鉴权密码"
-              en: "imageAuthPassword"
-            description:
-              zh-CN: "镜像鉴权密码"
-              en: ""
-          required: true
-          default: ''
         - name: "dockerfile"
           schema:
             type: string
           binding:
-            - build-docker-fusionstage.args.dockerfile
+            - build-docker.args.dockerfile
           display:
             type: string
             advanced: true
@@ -345,7 +270,7 @@ spec:
           schema:
             type: string
           binding:
-            - build-docker-fusionstage.args.context
+            - build-docker.args.context
           display:
             type: string
             advanced: true
@@ -362,7 +287,7 @@ spec:
           schema:
             type: string
           binding:
-            - build-docker-fusionstage.buildArguments
+            - build-docker.args.buildArguments
           display:
             type: string
             advanced: true
@@ -379,7 +304,7 @@ spec:
           schema:
             type: string
           binding:
-            - build-docker-fusionstage.args.retry
+            - build-docker.args.retry
           display:
             type: string
             advanced: true
@@ -393,90 +318,144 @@ spec:
           default: '3'
           value: ""
     - displayName:
-        zh-CN: "更新应用"
-        en: "Update Application"
+        zh-CN: "部署应用"
+        en: "DeployService"
       items:
-        - name: "domainName"
+        - name: createApp
           schema:
-            type: string
+            type: boolean
           binding:
-            - fusionStageDeployServiceWithCustomImage.args.domainName
+          - deployService.args.createApp
           display:
-            type: string
+            type: boolean
             name:
-              zh-CN: "租户名称"
-              en: "Domain Name"
+              zh-CN: "创建应用"
+              en: "create application"
             description:
-              zh-CN: "fusionStage平台用户所属租户"
-              en: "fusionStage"
-          required: true
-        - name: "username"
+              zh-CN: "关闭为更新已有应用；如开启，请将YAML、JSON资源文件放置在所选代码仓库中，应用将在下面选择的集群和命名空间下创建，创建后首次执行流水线为创建应用、后续为更新应用"
+              en: "Close to update existing applications. Such as open, please place the YAML, JSON resource files in the selected code warehouse, applications will be created under the selected cluster and namespace, created for the first time to perform assembly line for creating applications, subsequent to update application"
+          default: "false"
+          value: ""
+        - name: clusterName
           schema:
             type: string
           binding:
-            - fusionStageDeployServiceWithCustomImage.args.username
+          - deployService.args.clusterName
           display:
-            type: string
+            type: alauda.io/clustername
             name:
-              zh-CN: "用户名"
-              en: "UserName"
+              zh-CN: "集群"
+              en: "cluster"
             description:
-              zh-CN: "fusionStage平台登录帐号"
-              en: "fusionStage"
+              zh-CN: "应用所在的集群"
+              en: "cluster"
           required: true
-        - name: "password"
+          value: ""
+        - name: namespace
           schema:
             type: string
           binding:
-            - fusionStageDeployServiceWithCustomImage.args.password
+          - deployService.args.namespace
           display:
-            type: string
+            type: alauda.io/namespace
             name:
-              zh-CN: "密码"
-              en: "Password"
+              zh-CN: "命名空间"
+              en: "namespace"
             description:
-              zh-CN: "fusionStage平台登录密码"
-              en: "fusionStage"
+              zh-CN: "应用所在的命名空间"
+              en: "namespace"
+            related: clusterName
           required: true
-        - name: "projectId"
+          value: ""
+        - name: serviceName
           schema:
             type: string
           binding:
-            - fusionStageDeployServiceWithCustomImage.args.projectId
+            - deployService.args.serviceName
           display:
-            type: string
+            type: alauda.io/servicenamemix
             name:
-              zh-CN: "项目 ID"
-              en: "Project ID"
+              zh-CN: "应用"
+              en: "application"
+            description:
+              zh-CN: "应用名称、组件类型、组件名称"
+              en: "application"
+            related: namespace
+          relation:
+            - action: hidden
+              when:
+                name: createApp
+                value: true
           required: true
-        - name: "applicationName"
+          value: ""
+        - name: containerName
           schema:
             type: string
           binding:
-            - fusionStageDeployServiceWithCustomImage.args.applicationName
+            - deployService.args.containerName
           display:
-            type: string
+            type: alauda.io/containername
             name:
-              zh-CN: "应用名称"
-              en: "Application Name"
+              zh-CN: "容器"
+              en: "container"
+            description:
+              zh-CN: "容器实例名称"
+              en: "container"
+            related: serviceName
           required: true
-        - name: "containerName"
+          value: ""
+          relation:
+            - action: hidden
+              when:
+                name: createApp
+                value: true
+        - name: deployConfigFolder
           schema:
             type: string
           binding:
-            - fusionStageDeployServiceWithCustomImage.args.containerName
+            - deployService.args.deployConfigFolder
           display:
             type: string
             name:
-              zh-CN: "容器名称"
-              en: "Container Name"
+              zh-CN: "部署配置目录"
+              en: "Deploy Configuration Directory"
+            description:
+              zh-CN: "1.所选代码仓库中YAML、JSON文件的路径，如'a/b/c'，为避免出错，请尽可能保证所选文件夹下仅包含YAML、JSON的Kubernetes资源文件; 2.创建应用仅支持单应用创建，如YAML、JSON文件中存在多个应用的定义，则会创建失败"
+              en: "1.The path to the YAML and JSON files in the selected code repository, such as 'a/b/c', as much as possible to avoid errors, please ensure that the selected folder contains only the Kubernetes YAML, JSON resource files; 2.Creating a reference that only supports single-app creation, such as a definition of multiple apps in YAML, JSON files, will fail to be created"
           required: true
+          default: ""
+          value: ""
+          relation:
+            - action: show
+              when:
+                name: createApp
+                value: true
+        - name: container
+          schema:
+            type: string
+          binding:
+            - deployService.args.container
+          display:
+            type: string
+            name:
+              zh-CN: "容器"
+              en: "container"
+            description:
+              zh-CN: "构建出的镜像运行的容器名"
+              en: "container name"
+          required: true
+          value: ""
+          relation:
+            - action: show
+              when:
+                name: createApp
+                value: true
         - name: "command"
           schema:
             type: string
           required: false
           binding:
-          - fusionStageDeployServiceWithCustomImage.args.command
+          - deployService.args.command
           value: ""
           display:
             type: string
@@ -487,12 +466,17 @@ spec:
             description:
               zh-CN: "即 command，相当于 Dockerfile 中的 ENTRYPOINT 命令。如果没有指定启动命令，将使用容器镜像中的 ENTRYPOINT"
               en: "command"
+          relation:
+            - action: hidden
+              when:
+                name: createApp
+                value: true
         - name: "args"
           schema:
             type: string
           required: false
           binding:
-          - fusionStageDeployServiceWithCustomImage.args.args
+          - deployService.args.args
           display:
             type: string
             advanced: true
@@ -502,11 +486,16 @@ spec:
             description:
               zh-CN: "即 args，相当于 Dockerfile 中的 CMD，负责提供启动命令的命令参数。如果没有指定参数，将使用容器镜像中的 CMD"
               en: "args"
+          relation:
+            - action: hidden
+              when:
+                name: createApp
+                value: true
         - name: timeout
           schema:
             type: string
           binding:
-            - fusionStageDeployServiceWithCustomImage.args.timeout
+            - deployService.args.timeout
           display:
             type: string
             advanced: true
@@ -518,95 +507,5 @@ spec:
               en: ""
           required: true
           default: '300'
-          value: "300"
+          value: ""
 
-    - displayName:
-        zh-CN: "JIRA 信息"
-        en: "JIRA Information"
-      items:
-        - name: "UseJira"
-          schema:
-            type: boolean
-          binding:
-            - mavenwithjira.args.EnableJira
-            - build-docker-fusionstage.args.EnableJira
-            - fusionStageDeployServiceWithCustomImage.args.EnableJira
-          display:
-            type: boolean
-            name:
-              zh-CN: "创建JIRA Issue"
-              en: "Create JIRA Issue"
-            description:
-              zh-CN: "开启后，进行jira issue 创建"
-              en: "Whether to create jira issue"
-          required: false
-          value: "false"
-        - name: "Project Key"
-          schema:
-            type: string
-          binding:
-            - mavenwithjira.args.projectKey
-            - build-docker-fusionstage.args.projectKey
-            - fusionStageDeployServiceWithCustomImage.args.projectKey
-          display:
-            type: string
-            advanced: false
-            name:
-              zh-CN: "项目关键字"
-              en: "Project Key"
-            description:
-              zh-CN: "项目关键字"
-              en: "Project Key"
-          required: true
-          default: ''
-          relation:
-            - action: show
-              when:
-                name: UseJira
-                value: true
-        - name: "Summary"
-          schema:
-            type: string
-          binding:
-            - mavenwithjira.args.summary
-            - build-docker-fusionstage.args.summary
-            - fusionStageDeployServiceWithCustomImage.args.summary
-          display:
-            type: string
-            advanced: false
-            name:
-              zh-CN: "标题"
-              en: "Summary"
-            description:
-              zh-CN: "标题"
-              en: "Summary"
-          required: true
-          default: ''
-          relation:
-            - action: show
-              when:
-                name: UseJira
-                value: true
-        - name: "Description"
-          schema:
-            type: string
-          binding:
-            - mavenwithjira.args.description
-            - build-docker-fusionstage.args.description
-            - fusionStageDeployServiceWithCustomImage.args.description
-          display:
-            type: string
-            advanced: false
-            name:
-              zh-CN: "描述"
-              en: "Description"
-            description:
-              zh-CN: "描述"
-              en: "description"
-          required: true
-          default: ''
-          relation:
-            - action: show
-              when:
-                name: UseJira
-                value: true

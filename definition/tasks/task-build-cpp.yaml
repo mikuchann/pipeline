@@ -1,0 +1,44 @@
+apiVersion: devops.alauda.io/v1alpha1
+kind: PipelineTaskTemplate
+metadata:
+  name: cpp
+  annotations:
+    alauda.io/displayName.zh-CN: C/C++ 构建
+    alauda.io/displayName.en: C/C++ Build
+    alauda.io/description.zh-CN: C/C++ 构建
+    alauda.io/description.en: C/C++ Build
+    alauda.io/readme.zh-CN: C/C++ 构建
+    alauda.io/readme.en: C/C++ Build
+    alauda.io/version: "0.0.1"
+    alauda.io/style.icon: ""
+  labels:
+    category: CI
+spec:
+  engine: gotpl
+  body: |+
+    script {
+    try{
+      container('cpp'){
+        sh """
+          {{.buildCommand}}
+        """
+      }
+    }catch(Exception e){
+        throw e
+    }
+
+    }
+  arguments:
+    - name: "buildCommand"
+      schema:
+        type: string
+      display:
+        type: code
+        name:
+          zh-CN: "构建命令"
+          en: "Build Command"
+        description:
+          zh-CN: "自定义更详细的构建命令。默认为：make"
+          en: ""
+      required: true
+      default: 'make'
