@@ -5,9 +5,9 @@ metadata:
   annotations:
     alauda.io/displayName.zh-CN: "C/C++ 构建"
     alauda.io/displayName.en: "C/C++ Build"
-    alauda.io/description.zh-CN: "克隆代码 -> C/C++ 构建 -> 代码扫描 -> Docker 构建"
+    alauda.io/description.zh-CN: "克隆代码 -> C/C++ compile -> 代码扫描 -> Docker 构建"
     alauda.io/description.en: "Clone -> C/C++ Build -> Code Scan -> Docker Build"
-    alauda.io/version: "0.0.1"
+    alauda.io/version: "0.0.2"
     alauda.io/style.icon: c,cpp,docker,sonarqube,kubernetes
   labels:
     category: Build
